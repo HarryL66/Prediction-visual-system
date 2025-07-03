@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>晶圆匀胶均匀性预测系统</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --accent-color: #e74c3c;
+            --light-color: #ecf0f1;
+            --dark-color: #34495e;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4e9f5 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 30px;
+            background: linear-gradient(120deg, #2c3e50, #4a6491);
+            border-radius: 15px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+            color: white;
+        }
+        
+        h1 {
+            margin-bottom: 15px;
+            font-size: 2.5rem;
+            letter-spacing: 1px;
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            max-width: 800px;
+            margin: 0 auto;
+            opacity: 0.9;
+        }
+        
+        .content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+        
+        @media (max-width: 900px) {
+            .content {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .control-panel {
+            background-color: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .panel-title {
+            color: var(--primary-color);
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--secondary-color);
+            font-size: 1.5rem;
+        }
+        
+        .thickness-control {
+            margin-bottom: 30px;
+            padding: 25px;
+            background: linear-gradient(to right, #e0eafc, #cfdef3);
+            border-radius: 12px;
+        }
+        
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        input[type="range"] {
+            flex: 1;
+            height: 10px;
+            border-radius: 5px;
+            background: linear-gradient(to right, #4da0ff, #a3396c);
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: var(--accent-color);
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+        
+        .thickness-display {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--accent-color);
+            text-align: center;
+            min-width: 140px;
+            padding: 12px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .parameters-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            margin-bottom: 25px;
+        }
+        
+        .parameters-table th, .parameters-table td {
+            padding: 14px 18px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .parameters-table th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: var(--primary-color);
+            font-size: 1.1rem;
+        }
+        
+        .parameters-table tr:hover {
+            background-color: #f5f7ff;
+        }
+        
+        .param-value {
+            font-weight: bold;
+            color: var(--secondary-color);
+            font-size: 1.1rem;
+        }
+        
+        .chart-container {
+            background-color: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+            height: 500px;
+        }
+        
+        .chart-title {
+            text-align: center;
+            margin-bottom: 20px;
+            color: var(--primary-color);
+            font-size: 1.4rem;
+        }
+        
+        .uniformity-chart-container {
+            background-color: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+            height: 450px;
+            grid-column: 1 / -1;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-top: 25px;
+        }
+        
+        .info-card {
+            background-color: #f8f9fa;
+            padding: 25px;
+            border-radius: 12px;
+            border-left: 5px solid var(--secondary-color);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+        
+        .info-card h3 {
+            color: var(--dark-color);
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+        
+        .recommendation {
+            background: linear-gradient(to right, #e3f2fd, #d1e7ff);
+            padding: 25px;
+            border-radius: 12px;
+            margin-top: 30px;
+            border-left: 5px solid var(--secondary-color);
+        }
+        
+        .result-card {
+            display: flex;
+            justify-content: space-around;
+            background: linear-gradient(135deg, #e8f5e9, #d7eedc);
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 25px;
+            text-align: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+        }
+        
+        .result-item {
+            padding: 15px;
+        }
+        
+        .result-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: var(--accent-color);
+            margin: 10px 0;
+        }
+        
+        .result-label {
+            color: var(--dark-color);
+            font-weight: 600;
+        }
+        
+        .wafer-diagram {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #e0eafc 0%, #cfdef3 100%);
+            margin: 0 auto;
+            position: relative;
+            border: 3px solid var(--secondary-color);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+        
+        .wafer-center {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background-color: var(--accent-color);
+            position: absolute;
+            z-index: 2;
+        }
+        
+        .wafer-radius {
+            position: absolute;
+            width: 80%;
+            height: 2px;
+            background-color: rgba(52, 152, 219, 0.5);
+            transform-origin: center;
+        }
+        
+        .wafer-radius:nth-child(2) { transform: rotate(30deg); }
+        .wafer-radius:nth-child(3) { transform: rotate(60deg); }
+        .wafer-radius:nth-child(4) { transform: rotate(90deg); }
+        .wafer-radius:nth-child(5) { transform: rotate(120deg); }
+        .wafer-radius:nth-child(6) { transform: rotate(150deg); }
+        
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding: 25px;
+            color: var(--dark-color);
+            font-size: 1rem;
+            background-color: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>晶圆匀胶均匀性预测系统</h1>
+            <p class="subtitle">基于主轴转速、时间、滴胶量、热烘温度和时间等参数，预测5英寸晶圆ArF胶的匀胶均匀性</p>
+        </header>
+        
+        <div class="content">
+            <div class="control-panel">
+                <h2 class="panel-title">工艺参数控制</h2>
+                
+                <div class="thickness-control">
+                    <h3>目标胶膜厚度控制</h3>
+                    <p>调整滑块设置目标胶膜厚度（100-300纳米）：</p>
+                    <div class="slider-container">
+                        <span>100 nm</span>
+                        <input type="range" id="thicknessSlider" min="100" max="300" value="200" step="5">
+                        <span>300 nm</span>
+                        <div class="thickness-display" id="thicknessValue">200 nm</div>
+                    </div>
+                </div>
+                
+                <h3>旋涂工艺参数</h3>
+                <table class="parameters-table">
+                    <thead>
+                        <tr>
+                            <th>参数</th>
+                            <th>阶段1 (铺胶)</th>
+                            <th>阶段2 (匀胶)</th>
+                            <th>阶段3 (定厚)</th>
+                            <th>阶段4 (干燥)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>转速 (转/分)</td>
+                            <td><span class="param-value" id="speed1">800</span></td>
+                            <td><span class="param-value" id="speed2">1500</span></td>
+                            <td><span class="param-value" id="speed3">3000</span></td>
+                            <td><span class="param-value" id="speed4">4000</span></td>
+                        </tr>
+                        <tr>
+                            <td>时间 (秒)</td>
+                            <td><span class="param-value" id="time1">5</span></td>
+                            <td><span class="param-value" id="time2">10</span></td>
+                            <td><span class="param-value" id="time3">25</span></td>
+                            <td><span class="param-value" id="time4">8</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <h3>其他工艺参数</h3>
+                <table class="parameters-table">
+                    <tr>
+                        <td>滴胶量 (毫升)</td>
+                        <td colspan="4"><span class="param-value" id="dispense">3.2</span> ml</td>
+                    </tr>
+                    <tr>
+                        <td>热烘温度 (℃)</td>
+                        <td colspan="4"><span class="param-value" id="bakeTemp">105</span> ℃</td>
+                    </tr>
+                    <tr>
+                        <td>热烘时间 (秒)</td>
+                        <td colspan="4"><span class="param-value" id="bakeTime">90</span> 秒</td>
+                    </tr>
+                </table>
+                
+                <div class="result-card">
+                    <div class="result-item">
+                        <div class="result-label">厚度标准差</div>
+                        <div class="result-value" id="uniformity">±1.8%</div>
+                        <div>目标: &lt; ±2.0%</div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-label">边缘增厚率</div>
+                        <div class="result-value" id="edgeEffect">5.2%</div>
+                        <div>目标: &lt; 6.0%</div>
+                    </div>
+                    <div class="result-item">
+                        <div class="result-label">预测缺陷率</div>
+                        <div class="result-value" id="defectRate">0.45%</div>
+                        <div>目标: &lt; 0.5%</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="chart-container">
+                <h2 class="chart-title">旋涂工艺曲线</h2>
+                <canvas id="spinChart"></canvas>
+            </div>
+            
+            <div class="uniformity-chart-container">
+                <h2 class="chart-title">晶圆半径 - 胶膜厚度分布图</h2>
+                <canvas id="uniformityChart"></canvas>
+            </div>
+        </div>
+        
+        <div class="control-panel">
+            <h2 class="panel-title">工艺参数对匀胶均匀性的影响</h2>
+            
+            <div class="info-grid">
+                <div class="info-card">
+                    <h3>主轴转速</h3>
+                    <p>高速阶段转速越高，离心力越大，胶膜越薄。阶梯式转速可优化均匀性，避免边缘堆积。</p>
+                    <p>经验公式: 厚度 ∝ 1/√ω (ω为角速度)</p>
+                </div>
+                
+                <div class="info-card">
+                    <h3>匀胶时间</h3>
+                    <p>时间过短(&lt;10秒)导致溶剂挥发不充分，时间过长(&gt;60秒)可能引起微裂纹。推荐20-40秒高速匀胶。</p>
+                </div>
+                
+                <div class="info-card">
+                    <h3>滴胶量</h3>
+                    <p>5英寸晶圆推荐滴胶量2.5-4ml。不足导致覆盖不全，过量增加边缘堆积和飞溅风险。</p>
+                </div>
+                
+                <div class="info-card">
+                    <h3>热烘参数</h3>
+                    <p>前烘温度90-110℃去除溶剂，温度过低导致残留，过高引起针孔。热板烘烤均匀性优于烘箱。</p>
+                </div>
+            </div>
+            
+            <div class="recommendation">
+                <h3>最佳实践建议</h3>
+                <p>1. 采用阶梯式旋涂程序：低速铺展 → 中速过渡 → 高速匀胶 → 高速干燥</p>
+                <p>2. 控制环境湿度在40-60% RH，避免水汽凝结造成缺陷</p>
+                <p>3. 使用动态滴胶(低速旋转时滴胶)提高初始均匀性</p>
+                <p>4. 热烘温度波动控制在±1℃以内</p>
+                <p>5. 定期校准主轴转速和滴胶量精度</p>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>© 2023 半导体制造工艺优化系统 | 基于ArF胶匀胶工艺研究数据</p>
+            <p>本系统模拟结果仅供参考，实际工艺参数需根据设备与材料特性进行调整</p>
+        </div>
+    </div>
+
+    <script>
+        // 初始化旋涂工艺曲线图
+        const spinCtx = document.getElementById('spinChart').getContext('2d');
+        let spinChart = new Chart(spinCtx, {
+            type: 'line',
+            data: {
+                labels: ['0', '5', '15', '40', '48'],
+                datasets: [{
+                    label: '主轴转速 (RPM)',
+                    data: [0, 800, 1500, 3000, 4000, 0],
+                    borderColor: '#3498db',
+                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointBackgroundColor: '#2980b9',
+                    pointRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: '转速 (RPM)',
+                            font: {
+                                size: 14,
+                                weight: 'bold'
+                            }
+                        },
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: '时间 (秒)',
+                            font: {
+                                size: 14,
+                                weight: 'bold'
+                            }
+                        },
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: {
+                            font: {
+                                size: 14
+                            }
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(52, 73, 94, 0.9)',
+                        titleFont: {
+                            size: 16
+                        },
+                        bodyFont: {
+                            size: 14
+                        }
+                    }
+                }
+            }
+        });
+        
+        // 初始化均匀性图表
+        const uniformityCtx = document.getElementById('uniformityChart').getContext('2d');
+        let uniformityChart = new Chart(uniformityCtx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: '胶膜厚度 (nm)',
+                    data: [],
+                    borderColor: '#e74c3c',
+                    backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.2,
+                    pointBackgroundColor: '#c0392b',
+                    pointRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        title: {
+                            display: true,
+                            text: '胶膜厚度 (nm)',
+                            font: {
+                                size: 14,
+                                weight: 'bold'
+                            }
+                        },
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: '晶圆半径 (mm)',
+                            font: {
+                                size: 14,
+                                weight: 'bold'
+                            }
+                        },
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: {
+                            font: {
+                                size: 14
+                            }
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(52, 73, 94, 0.9)',
+                        titleFont: {
+                            size: 16
+                        },
+                        bodyFont: {
+                            size: 14
+                        },
+                        callbacks: {
+                            label: function(context) {
+                                return `厚度: ${context.parsed.y.toFixed(1)} nm`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        // 获取DOM元素
+        const thicknessSlider = document.getElementById('thicknessSlider');
+        const thicknessValue = document.getElementById('thicknessValue');
+        
+        // 工艺参数元素
+        const speed1 = document.getElementById('speed1');
+        const speed2 = document.getElementById('speed2');
+        const speed3 = document.getElementById('speed3');
+        const speed4 = document.getElementById('speed4');
+        const time1 = document.getElementById('time1');
+        const time2 = document.getElementById('time2');
+        const time3 = document.getElementById('time3');
+        const time4 = document.getElementById('time4');
+        const dispense = document.getElementById('dispense');
+        const bakeTemp = document.getElementById('bakeTemp');
+        const bakeTime = document.getElementById('bakeTime');
+        const uniformity = document.getElementById('uniformity');
+        const edgeEffect = document.getElementById('edgeEffect');
+        const defectRate = document.getElementById('defectRate');
+        
+        // 初始更新
+        updateParameters();
+        updateUniformityChart();
+        
+        // 滑块事件监听
+        thicknessSlider.addEventListener('input', function() {
+            thicknessValue.textContent = this.value + ' nm';
+            updateParameters();
+            updateUniformityChart();
+        });
+        
+        // 更新参数函数
+        function updateParameters() {
+            const thickness = parseInt(thicknessSlider.value);
+            
+            // 根据厚度计算参数 (经验公式)
+            const baseSpeed = 7000 - thickness * 15;
+            
+            // 设置各阶段转速
+            speed1.textContent = Math.round(800 - (thickness-200)/20);
+            speed2.textContent = Math.round(1500 - (thickness-200)/10);
+            speed3.textContent = Math.round(baseSpeed * 0.45);
+            speed4.textContent = Math.round(baseSpeed * 0.6);
+            
+            // 设置各阶段时间
+            time1.textContent = '5';
+            time2.textContent = '10';
+            time3.textContent = Math.round(30 - (thickness-200)/20);
+            time4.textContent = Math.round(10 - (thickness-200)/50);
+            
+            // 设置其他参数
+            dispense.textContent = (3.0 + (thickness-200)/100).toFixed(1);
+            bakeTemp.textContent = Math.round(100 + (thickness-100)/20);
+            bakeTime.textContent = Math.round(60 + (thickness-100)/5);
+            
+            // 均匀性和缺陷率
+            const uniformVal = (1.0 + (Math.abs(thickness-200))/100).toFixed(2);
+            uniformity.textContent = `±${uniformVal}%`;
+            
+            const edgeVal = (4.5 + Math.abs(thickness-200)/50).toFixed(1);
+            edgeEffect.textContent = `${edgeVal}%`;
+            
+            const defectVal = (0.3 + Math.abs(thickness-200)/500).toFixed(2);
+            defectRate.textContent = `${defectVal}%`;
+            
+            // 更新旋涂工艺曲线
+            updateSpinChart(thickness);
+        }
+        
+        // 更新旋涂工艺曲线
+        function updateSpinChart(thickness) {
+            const baseSpeed = 7000 - thickness * 15;
+            const stage3Speed = Math.round(baseSpeed * 0.45);
+            const stage4Speed = Math.round(baseSpeed * 0.6);
+            const stage3Time = 5 + 10 + Math.round(30 - (thickness-200)/20);
+            const stage4Time = stage3Time + Math.round(10 - (thickness-200)/50);
+            
+            spinChart.data.labels = ['0', '5', '15', stage3Time.toString(), stage4Time.toString()];
+            spinChart.data.datasets[0].data = [0, 800, 1500, stage3Speed, stage4Speed, 0];
+            spinChart.update();
+        }
+        
+        // 更新均匀性图表
+        function updateUniformityChart() {
+            const thickness = parseInt(thicknessSlider.value);
+            const dataPoints = [];
+            const labels = [];
+            
+            // 生成半径数据 (0-65mm)
+            for (let r = 0; r <= 65; r += 5) {
+                labels.push(r.toString());
+                
+                // 模拟厚度分布：中心最薄，边缘略厚
+                // 使用二次函数模拟厚度分布
+                const centerThickness = thickness;
+                const edgeThickness = thickness * (1.05 + (thickness-200)/1000);
+                
+                // 计算当前半径下的厚度
+                let t;
+                if (r < 10) {
+                    // 中心区域
+                    t = centerThickness + (Math.random() - 0.5) * thickness * 0.01;
+                } else if (r < 50) {
+                    // 中间区域
+                    const progress = (r - 10) / 40;
+                    t = centerThickness + (edgeThickness - centerThickness) * progress * 0.7;
+                    t += (Math.random() - 0.5) * thickness * 0.02;
+                } else {
+                    // 边缘区域
+                    const progress = (r - 50) / 15;
+                    t = centerThickness + (edgeThickness - centerThickness) * (0.7 + progress * 0.3);
+                    t += (Math.random() - 0.5) * thickness * 0.03;
+                }
+                
+                dataPoints.push(t);
+            }
+            
+            uniformityChart.data.labels = labels;
+            uniformityChart.data.datasets[0].data = dataPoints;
+            uniformityChart.data.datasets[0].label = `胶膜厚度 (目标: ${thickness} nm)`;
+            uniformityChart.update();
+        }
+    </script>
+</body>
+</html>
